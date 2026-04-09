@@ -1,0 +1,451 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comandera Kanban Pro | pido.club</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --column-bg: #ebedf0;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --solicita-bg: #1976D2;
+            --cobrado-bg: #e8f5e9;
+            --cobrado-border: #4CAF50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 10px;
+            color: var(--text-color);
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+        .login-card input {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            outline: none;
+        }
+        .login-card input:focus { border-color: #4CAF50; }
+        .btn-login {
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Header */
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .logo-container img { height: 45px; width: auto; }
+
+        #status-indicator {
+            margin-left: auto;
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: #eee;
+        }
+
+        .total-box {
+            background: #333;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Kanban */
+        .kanban-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .column {
+            background-color: var(--column-bg);
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80vh;
+            border: 1px solid #ccc;
+        }
+        .column-header { text-align: center; margin-bottom: 15px; }
+        .column-header h2 { font-size: 0.9rem; text-transform: uppercase; margin: 5px; color: #555; }
+        .select-all-zone {
+            font-size: 0.75rem;
+            background: #fff;
+            padding: 5px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        /* Ticket */
+        .ticket {
+            background: var(--card-bg);
+            border: 1px solid #bbb;
+            margin-bottom: 15px;
+            padding: 15px;
+            position: relative;
+            cursor: grab;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .ticket.solicita-cuenta { background-color: var(--solicita-bg); color: white; border-color: #0d47a1; }
+        .ticket.solicita-cuenta .codigo-b { background: #0d47a1; }
+        .ticket.solicita-cuenta .notas-cliente { color: #333; }
+
+        .ticket.cobrado {
+            background-color: var(--cobrado-bg) !important;
+            border: 2px solid var(--cobrado-border) !important;
+            color: #333 !important;
+        }
+        .ticket.cobrado::after {
+            content: "COBRADO";
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 1.8rem; font-weight: bold;
+            color: rgba(76, 175, 80, 0.2);
+            border: 4px solid rgba(76, 175, 80, 0.2);
+            padding: 5px; pointer-events: none;
+        }
+
+        .ticket-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 10px; }
+        .codigo-b { background: #333; color: #fff; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
+        
+        .mesa-grande, .delivery-grande, .cuenta-grande {
+            font-size: 1.8rem; font-weight: bold; text-align: center;
+            display: block; border: 3px solid currentColor; margin: 8px 0; padding: 5px;
+        }
+
+        .items-list { list-style: none; padding: 0; font-weight: bold; font-size: 1.1rem; margin: 10px 0; }
+        .notas-cliente { font-style: italic; background: #fff9c4; padding: 8px; border-left: 4px solid #ffd600; margin: 10px 0; font-size: 0.9rem; }
+        .divider { border-top: 1px dashed #000; margin: 10px 0; opacity: 0.3; }
+
+        .btn-print { background: #2196F3; color: white; padding: 10px 15px; font-weight: bold; }
+        .btn-refresh { background: #4CAF50; color: white; padding: 10px 15px; font-weight: bold; }
+        .btn-logout { background: #f44336; color: white; padding: 8px; font-size: 0.7rem; font-weight: bold; }
+
+        .ticket-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-print-mini { background: #eee; flex: 1; font-size: 0.8rem; border: 1px solid #ccc; padding: 6px; }
+        .btn-pay-mini { background: #ff9800; color: white; flex: 1; font-size: 0.8rem; padding: 6px; }
+
+        @media print {
+            .no-print, .header-controls, .column-header, .ticket-actions, .select-all-zone { display: none !important; }
+            .kanban-board { display: block !important; }
+            .ticket { display: none !important; }
+            .ticket.printable { 
+                display: block !important; 
+                width: 72mm; margin: 0 auto; border: none !important; 
+                border-bottom: 1px dashed #ccc !important; page-break-after: always;
+                color: black !important; background: white !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-card">
+            <h1 style="margin-top:0">🚀 pido.club</h1>
+            <p>Ingresa el <strong>ID de tu Google Sheet</strong> para comenzar:</p>
+            <input type="text" id="sheet-id-input" placeholder="Ej: 1SHcbGxZeH_A1GqZ_z4ge9KxH3... ">
+            <button class="btn-login" onclick="guardarAcceso()">CONECTAR COMANDERA</button>
+            <p style="font-size: 0.75rem; color: #888; margin-top: 15px;">Asegúrate de haber compartido tu hoja con permiso de Editor al mail del sistema.</p>
+        </div>
+    </div>
+
+    <audio id="audio-notificacion" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="header-controls no-print">
+        <div class="logo-container">
+            <img src="https://via.placeholder.com/150x50?text=PIDO.CLUB" alt="Logo">
+        </div>
+
+        <button class="btn-print" onclick="imprimirLote()">🖨️ Imprimir Seleccionados</button>
+        <button class="btn-refresh" onclick="fetchPedidos()">🔄 Refrescar</button>
+        
+        <div class="filter-group" style="display:flex; align-items:center; gap:10px; background:#f0f0f0; padding:5px 15px; border-radius:5px;">
+            <label>🔎 Mesa:</label>
+            <input type="text" id="mesa-filter" style="width:50px; padding:5px; border-radius:4px; border:1px solid #ccc;" oninput="aplicarFiltro()">
+            <div id="total-mesa-display" class="total-box">$ 0,00</div>
+        </div>
+
+        <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión / Cambiar ID</button>
+        <div id="status-indicator">⏳ Desconectado</div>
+    </div>
+
+    <div class="kanban-board">
+        <div class="column" id="col-Pendiente" ondrop="drop(event, 'Pendiente')" ondragover="allowDrop(event)">
+            <div class="column-header"><h2>1. Pendientes</h2><label class="select-all-zone"><input type="checkbox" onclick="toggleSelectColumn('col-Pendiente', this.checked)"> Todos</label></div>
+            <div class="list-container"></div>
+        </div>
+        <div class="column" id="col-En Proceso" ondrop="drop(event, 'En Proceso')" ondragover="allowDrop(event)">
+            <div class="column-header"><h2>2. En Proceso</h2><label class="select-all-zone"><input type="checkbox" onclick="toggleSelectColumn('col-En Proceso', this.checked)"> Todos</label></div>
+            <div class="list-container"></div>
+        </div>
+        <div class="column" id="col-Listo" ondrop="drop(event, 'Listo')" ondragover="allowDrop(event)">
+            <div class="column-header"><h2>3. Listos</h2><label class="select-all-zone"><input type="checkbox" onclick="toggleSelectColumn('col-Listo', this.checked)"> Todos</label></div>
+            <div class="list-container"></div>
+        </div>
+        <div class="column" id="col-Delivery" ondrop="drop(event, 'Delivery')" ondragover="allowDrop(event)">
+            <div class="column-header"><h2>4. Enviado/Deliv</h2><label class="select-all-zone"><input type="checkbox" onclick="toggleSelectColumn('col-Delivery', this.checked)"> Todos</label></div>
+            <div class="list-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT ACTUALIZADA
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzVoxWPu-r9u_5xL4i-wlABjkK6mIb-2kJpJhCjj_06DzGeuL79QH-vxIUHdS2WKqwp/exec'; 
+        
+        let CLIENT_SHEET_ID = localStorage.getItem('pido_sheet_id');
+        let idsConocidos = new Set();
+
+        function guardarAcceso() {
+            const id = document.getElementById('sheet-id-input').value.trim();
+            if (id.length < 20) return alert("ID inválido. Pega el ID completo de tu Google Sheet.");
+            localStorage.setItem('pido_sheet_id', id);
+            CLIENT_SHEET_ID = id;
+            document.getElementById('login-overlay').style.display = 'none';
+            fetchPedidos();
+        }
+
+        function cerrarSesion() {
+            if(confirm("¿Quieres cambiar de hoja de cálculo?")) {
+                localStorage.removeItem('pido_sheet_id');
+                location.reload();
+            }
+        }
+
+        function formatCurrency(m) { 
+            return parseFloat(m).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+        }
+
+        function fetchPedidos() {
+            if (!CLIENT_SHEET_ID) {
+                document.getElementById('login-overlay').style.display = 'flex';
+                return;
+            }
+            document.getElementById('login-overlay').style.display = 'none';
+            const status = document.getElementById('status-indicator');
+            status.innerText = "⏳ Sincronizando...";
+            
+            const oldScript = document.getElementById('api-call');
+            if (oldScript) oldScript.remove();
+            
+            const script = document.createElement('script');
+            script.id = 'api-call';
+            script.src = `${WEB_APP_URL}?callback=renderTablero&sheetId=${CLIENT_SHEET_ID}&t=${Date.now()}`;
+            document.body.appendChild(script);
+        }
+
+        function renderTablero(pedidos) {
+            console.log("Datos recibidos:", pedidos);
+
+            if (pedidos.error) {
+                alert("⚠️ Error: " + pedidos.error);
+                const status = document.getElementById('status-indicator');
+                status.innerText = "❌ Error";
+                status.style.color = "red";
+                return;
+            }
+
+            let sonar = false;
+            const status = document.getElementById('status-indicator');
+            status.innerText = "✅ Actualizado " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            status.style.color = "green";
+
+            // Limpiar columnas oficiales
+            const columnasOficiales = ['Pendiente', 'En Proceso', 'Listo', 'Delivery'];
+            columnasOficiales.forEach(id => {
+                const container = document.querySelector(`#col-${id.replace(/ /g, '\\ ')} .list-container`);
+                if(container) container.innerHTML = '';
+            });
+
+            pedidos.forEach(p => {
+                const sid = String(p.id);
+                // Mapeo forzado: Si el estado es "NUEVO" o no coincide, va a "Pendiente"
+                let estadoDestino = p.estado.trim();
+                if (estadoDestino === 'NUEVO' || !columnasOficiales.includes(estadoDestino)) {
+                    estadoDestino = 'Pendiente';
+                }
+
+                if (!idsConocidos.has(sid)) {
+                    if (estadoDestino === 'Pendiente') sonar = true;
+                    idsConocidos.add(sid);
+                }
+
+                const contenidoParaCierre = (p.nombre + p.notas).toLowerCase();
+                const esCierre = contenidoParaCierre.includes("cuenta") || contenidoParaCierre.includes("solicita");
+
+                const ticket = document.createElement('div');
+                ticket.className = 'ticket' + (esCierre ? ' solicita-cuenta' : '') + (p.cobrado ? ' cobrado' : '');
+                ticket.id = 'ticket-' + p.id;
+                ticket.setAttribute('data-mesa', String(p.datoMesa).toLowerCase());
+                ticket.setAttribute('data-monto', p.monto);
+                ticket.setAttribute('data-estado', estadoDestino);
+                ticket.draggable = true;
+                ticket.ondragstart = (e) => { e.dataTransfer.setData("text", p.id); };
+
+                let cabecera = `<span class="mesa-grande">MESA ${p.datoMesa}</span>`;
+                if (esCierre) cabecera = `<span class="cuenta-grande">💰 CUENTA</span><span class="mesa-grande">MESA ${p.datoMesa}</span>`;
+                if (p.entrega && p.entrega.toUpperCase().includes("DELIVERY")) {
+                    cabecera = `<span class="delivery-grande">🛵 DELIVERY<br><small style="font-size:1rem">${p.datoMesa}</small></span>`;
+                }
+
+                ticket.innerHTML = `
+                    <div class="ticket-header">
+                        <span class="codigo-b">${p.codigo}</span>
+                        <span>${p.fecha}</span>
+                    </div>
+                    <div class="no-print" style="position:absolute; top:40px; right:10px;">
+                        <input type="checkbox" class="sel-check" value="${p.id}" style="transform:scale(1.5)">
+                    </div>
+                    <div style="font-size:1.1rem"><strong>${p.nombre || 'SIN NOMBRE'}</strong></div>
+                    <small>${p.entrega || '-'}</small>
+                    ${cabecera}
+                    <div class="divider">----------------------------------</div>
+                    <ul class="items-list">${p.items.map(i => `<li>• ${i}</li>`).join('')}</ul>
+                    ${p.notas ? `<div class="notas-cliente">${p.notas}</div>` : ''}
+                    <div class="divider">----------------------------------</div>
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1rem;">
+                        <span>$ ${formatCurrency(p.monto)}</span>
+                        <span>${p.formaPago}</span>
+                    </div>
+                    <div class="ticket-actions no-print">
+                        <button class="btn-print-mini" onclick="imprimirIndividual(${p.id})">🖨️ IMPRIMIR</button>
+                        <button class="btn-pay-mini" onclick="toggleCobrado(${p.id})">${p.cobrado ? '🔙 RE-ABRIR' : '💰 COBRADO'}</button>
+                    </div>
+                `;
+                
+                const col = document.getElementById(`col-${estadoDestino}`);
+                if (col) col.querySelector('.list-container').appendChild(ticket);
+            });
+
+            if (sonar) document.getElementById('audio-notificacion').play().catch(e => {});
+            aplicarFiltro();
+        }
+
+        function cambiarEstado(id, nuevoEstado) {
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ action: 'updateEstado', id: id, nuevoEstado: nuevoEstado, sheetId: CLIENT_SHEET_ID })
+            }).then(() => setTimeout(fetchPedidos, 800));
+        }
+
+        function toggleCobrado(id) {
+            const t = document.getElementById('ticket-' + id);
+            const seraCobrado = !t.classList.contains('cobrado');
+            t.classList.toggle('cobrado');
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ action: 'updateCobrado', id: id, isCobrado: seraCobrado, sheetId: CLIENT_SHEET_ID })
+            });
+        }
+
+        function aplicarFiltro() {
+            const v = document.getElementById('mesa-filter').value.toLowerCase().trim();
+            let total = 0;
+            document.querySelectorAll('.ticket').forEach(t => {
+                const m = t.getAttribute('data-mesa');
+                if (v === "" || m.includes(v)) {
+                    t.style.display = "block";
+                    if (v !== "") total += parseFloat(t.getAttribute('data-monto')) || 0;
+                } else { t.style.display = "none"; }
+            });
+            document.getElementById('total-mesa-display').innerText = "$ " + formatCurrency(total);
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drop(ev, nuevoEstado) {
+            ev.preventDefault();
+            const id = ev.dataTransfer.getData("text");
+            const el = document.getElementById('ticket-' + id);
+            if(el) {
+                document.getElementById('col-' + nuevoEstado).querySelector('.list-container').appendChild(el);
+                cambiarEstado(id, nuevoEstado);
+            }
+        }
+
+        function imprimirIndividual(id) {
+            document.querySelectorAll('.ticket').forEach(t => t.classList.remove('printable'));
+            const el = document.getElementById('ticket-' + id);
+            if (el) {
+                el.classList.add('printable');
+                window.print();
+                if (el.getAttribute('data-estado') === 'Pendiente') cambiarEstado(id, 'En Proceso');
+            }
+        }
+
+        function imprimirLote() {
+            const checks = document.querySelectorAll('.sel-check:checked');
+            if (!checks.length) return alert("Selecciona tickets");
+            document.querySelectorAll('.ticket').forEach(t => t.classList.remove('printable'));
+            checks.forEach(c => {
+                const el = document.getElementById('ticket-' + c.value);
+                if(el) {
+                    el.classList.add('printable');
+                    if (el.getAttribute('data-estado') === 'Pendiente') cambiarEstado(c.value, 'En Proceso');
+                }
+            });
+            window.print();
+        }
+
+        function toggleSelectColumn(colId, isChecked) {
+            document.getElementById(colId).querySelectorAll('.sel-check').forEach(c => {
+                if (c.closest('.ticket').style.display !== 'none') c.checked = isChecked;
+            });
+        }
+
+        window.onload = () => { fetchPedidos(); setInterval(fetchPedidos, 30000); };
+    </script>
+</body>
+</html>
